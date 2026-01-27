@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '../lib/supabase';
 import './LoginPage.css';
 
 const LoginPage = ({ onLogin }) => {
@@ -7,6 +8,7 @@ const LoginPage = ({ onLogin }) => {
     password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -14,22 +16,32 @@ const LoginPage = ({ onLogin }) => {
       ...prev,
       [name]: value
     }));
+    // Clear error when user starts typing
+    if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    // Simulate login process
-    setTimeout(() => {
-      // Simple validation - in real app, this would be API call
-      if (formData.email && formData.password) {
-        onLogin();
-      } else {
-        alert('Please enter valid credentials');
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) {
+        setError(error.message);
+      } else if (data.user) {
+        onLogin(data.user);
       }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+      console.error('Login error:', err);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -48,6 +60,12 @@ const LoginPage = ({ onLogin }) => {
           </div>
           
           <form onSubmit={handleSubmit} className="login-form">
+            {error && (
+              <div className="error-message">
+                {error}
+              </div>
+            )}
+            
             <div className="form-group">
               <label className="form-label">Email Address</label>
               <input

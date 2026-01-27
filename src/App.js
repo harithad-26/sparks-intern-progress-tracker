@@ -18,7 +18,7 @@ import AddStreamModal from './components/AddStreamModal';
 import InternDetailsPanel from './components/InternDetailsPanel';
 import './App.css';
 
-const AppContent = ({ onLogout }) => {
+const AppContent = ({ onLogout, user }) => {
   const { updateIntern, deleteIntern, addCustomStream } = useInterns();
   const [showAddInternModal, setShowAddInternModal] = useState(false);
   const [showAddStreamModal, setShowAddStreamModal] = useState(false);
@@ -28,7 +28,7 @@ const AppContent = ({ onLogout }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const location = useLocation();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     // Show confirmation dialog
     const confirmLogout = window.confirm('Are you sure you want to logout?');
     
@@ -41,10 +41,10 @@ const AppContent = ({ onLogout }) => {
       setSidebarOpen(false);
       setSearchTerm('');
       
-      // Clear any localStorage data if needed
-      // localStorage.clear(); // Uncomment if you want to clear all stored data
+      // Sign out from Supabase
+      await supabase.auth.signOut();
       
-      // Call the parent logout function to set isAuthenticated to false
+      // Call the parent logout function
       onLogout();
     }
   };
@@ -101,6 +101,7 @@ const AppContent = ({ onLogout }) => {
           isSidebarOpen={sidebarOpen}
           onSearch={handleSearch}
           searchTerm={searchTerm}
+          user={user}
         />
         <div className="content-area">
           <Routes>
@@ -156,22 +157,62 @@ const AppContent = ({ onLogout }) => {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const test = async () => {
-      const { data, error } = await supabase.from('test').select('*')
-      console.log('Supabase connection test:', data, error)
-    }
-    test()
-  }, [])
+    // Check initial auth state
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setIsAuthenticated(true);
+        setUser(session.user);
+      }
+      setLoading(false);
+    };
 
-  const handleLogin = () => {
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setIsAuthenticated(true);
+          setUser(session.user);
+        } else {
+          setIsAuthenticated(false);
+          setUser(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogin = (user) => {
     setIsAuthenticated(true);
+    setUser(user);
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setUser(null);
   };
+
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '18px'
+      }}>
+        Loading...
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <LoginPage onLogin={handleLogin} />;
@@ -180,7 +221,7 @@ function App() {
   return (
     <InternProvider>
       <Router>
-        <AppContent onLogout={handleLogout} />
+        <AppContent onLogout={handleLogout} user={user} />
       </Router>
     </InternProvider>
   );
