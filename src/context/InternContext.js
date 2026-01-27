@@ -39,7 +39,7 @@ export const InternProvider = ({ children }) => {
   // Load all data from Supabase on mount
   useEffect(() => {
     loadAllData();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadAllData = async () => {
     setLoading(true);
@@ -65,14 +65,26 @@ export const InternProvider = ({ children }) => {
   const loadInterns = async () => {
     const { data, error } = await supabase
       .from('interns')
-      .select('*')
+      .select(`
+        *,
+        streams (name),
+        batches (name)
+      `)
       .order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error loading interns:', error);
       return;
     }
-    setInterns(data || []);
+    
+    // Transform data to match UI expectations
+    const transformedData = (data || []).map(intern => ({
+      ...intern,
+      domain: intern.streams?.name || '',
+      batch: intern.batches?.name || ''
+    }));
+    
+    setInterns(transformedData);
   };
 
   const loadStreams = async () => {
@@ -136,7 +148,7 @@ export const InternProvider = ({ children }) => {
 
   const loadPerformanceEvaluations = async () => {
     const { data, error } = await supabase
-      .from('performance')
+      .from('performance_evaluations')
       .select(`
         *,
         interns (name, domain, batch)
@@ -178,33 +190,110 @@ export const InternProvider = ({ children }) => {
 
   // INTERN MANAGEMENT FUNCTIONS
   const addIntern = async (internData, currentStream = null) => {
+    console.log('Adding intern with data:', internData);
+    
+    // First, we need to get or create the stream and batch IDs
+    let streamId = null;
+    let batchId = null;
+
+    // Get stream ID if domain is provided
+    if (internData.domain || currentStream) {
+      const streamName = internData.domain || currentStream;
+      const { data: streamData, error: streamError } = await supabase
+        .from('streams')
+        .select('id')
+        .eq('name', streamName)
+        .single();
+      
+      if (streamError && streamError.code === 'PGRST116') {
+        // Stream doesn't exist, create it
+        const { data: newStream, error: createStreamError } = await supabase
+          .from('streams')
+          .insert([{ name: streamName }])
+          .select('id')
+          .single();
+        
+        if (createStreamError) {
+          console.error('Error creating stream:', createStreamError);
+          throw createStreamError;
+        }
+        streamId = newStream.id;
+      } else if (streamError) {
+        console.error('Error finding stream:', streamError);
+        throw streamError;
+      } else {
+        streamId = streamData.id;
+      }
+    }
+
+    // Get batch ID if batch is provided
+    if (internData.batch) {
+      const { data: batchData, error: batchError } = await supabase
+        .from('batches')
+        .select('id')
+        .eq('name', internData.batch)
+        .single();
+      
+      if (batchError && batchError.code === 'PGRST116') {
+        // Batch doesn't exist, create it
+        const { data: newBatch, error: createBatchError } = await supabase
+          .from('batches')
+          .insert([{ name: internData.batch }])
+          .select('id')
+          .single();
+        
+        if (createBatchError) {
+          console.error('Error creating batch:', createBatchError);
+          throw createBatchError;
+        }
+        batchId = newBatch.id;
+      } else if (batchError) {
+        console.error('Error finding batch:', batchError);
+        throw batchError;
+      } else {
+        batchId = batchData.id;
+      }
+    }
+
     const newIntern = {
       name: internData.name,
       email: internData.email,
       college: internData.college,
       phone: internData.phone,
-      academic_year: internData.academicYear,
-      domain: internData.domain || currentStream,
-      batch: internData.batch,
-      status: internData.onboardingStatus || 'active',
-      additional_details: internData.additionalDetails || '',
-      joined_date: new Date().toISOString().split('T')[0]
+      stream_id: streamId,
+      batch_id: batchId,
+      status: internData.onboardingStatus || 'active'
     };
+
+    console.log('Inserting to Supabase:', newIntern);
 
     const { data, error } = await supabase
       .from('interns')
       .insert([newIntern])
-      .select()
+      .select(`
+        *,
+        streams (name),
+        batches (name)
+      `)
       .single();
 
     if (error) {
-      console.error('Error adding intern:', error);
+      console.error('Supabase error details:', error);
       throw error;
     }
 
+    console.log('Successfully added intern:', data);
+
+    // Transform data to match UI expectations
+    const transformedData = {
+      ...data,
+      domain: data.streams?.name || '',
+      batch: data.batches?.name || ''
+    };
+
     // Update local state
-    setInterns(prev => [data, ...prev]);
-    return data;
+    setInterns(prev => [transformedData, ...prev]);
+    return transformedData;
   };
 
   const updateIntern = async (internId, updates) => {
@@ -516,8 +605,8 @@ export const InternProvider = ({ children }) => {
       result = data;
 
       // Update local state
-      setPerformanceEvaluations(prev => prev.map(eval => 
-        eval.id === existing.id ? data : eval
+      setPerformanceEvaluations(prev => prev.map(evaluation => 
+        evaluation.id === existing.id ? data : evaluation
       ));
     } else {
       // Insert new evaluation
@@ -790,18 +879,18 @@ export const InternProvider = ({ children }) => {
   };
 
   const getPerformanceEvaluations = (streamName, batchId = 'default') => {
-    return performanceEvaluations.filter(eval => {
-      const matchesStream = eval.stream_name === streamName;
-      const matchesBatch = batchId === 'default' ? eval.batch_id === null : eval.batch_id === batchId;
+    return performanceEvaluations.filter(evaluation => {
+      const matchesStream = evaluation.stream_name === streamName;
+      const matchesBatch = batchId === 'default' ? evaluation.batch_id === null : evaluation.batch_id === batchId;
       return matchesStream && matchesBatch;
     });
   };
 
   const getInternPerformanceHistory = (internId, streamName, batchId = 'default') => {
-    return performanceEvaluations.filter(eval => {
-      const matchesIntern = eval.intern_id === internId;
-      const matchesStream = eval.stream_name === streamName;
-      const matchesBatch = batchId === 'default' ? eval.batch_id === null : eval.batch_id === batchId;
+    return performanceEvaluations.filter(evaluation => {
+      const matchesIntern = evaluation.intern_id === internId;
+      const matchesStream = evaluation.stream_name === streamName;
+      const matchesBatch = batchId === 'default' ? evaluation.batch_id === null : evaluation.batch_id === batchId;
       return matchesIntern && matchesStream && matchesBatch;
     });
   };

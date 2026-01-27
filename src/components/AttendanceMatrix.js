@@ -31,9 +31,16 @@ import { useInterns } from '../context/InternContext';
 import './AttendanceMatrix.css';
 
 const AttendanceMatrix = ({ batchId, streamName }) => {
-  const { getAllInterns, getInternsByBatch, getInternsByStream } = useInterns();
+  const { 
+    getAllInterns, 
+    getInternsByBatch, 
+    getInternsByStream, 
+    saveAttendanceData, 
+    getAttendanceData 
+  } = useInterns();
   const [selectedMonthYear, setSelectedMonthYear] = useState('September 2025');
   const [attendanceData, setAttendanceData] = useState({});
+  const [loading, setLoading] = useState(false);
 
   // Get interns filtered by batch or stream
   const getFilteredInterns = () => {
@@ -121,64 +128,23 @@ const AttendanceMatrix = ({ batchId, streamName }) => {
   };
 
   // Save attendance data
-  const handleSaveAttendance = () => {
-    const contextKey = getContextKey();
-    const monthKey = selectedMonthYear.replace(' ', '-');
-    
-    // Transform attendance data to the specified format
-    const transformedData = {};
-    interns.forEach(intern => {
-      transformedData[intern.id] = {};
-      weeks.forEach((week, index) => {
-        const weekKey = `week${index + 1}`;
-        const attendanceKey = getAttendanceKey(intern.id, week);
-        transformedData[intern.id][weekKey] = attendanceData[attendanceKey] || '';
-      });
-    });
-
-    // Save to localStorage with the new structure
-    const storageKey = `attendance_${contextKey}_${monthKey}`;
-    const dataToSave = {
-      ...transformedData,
-      savedAt: new Date().toISOString(),
-      context: contextKey,
-      monthYear: selectedMonthYear
-    };
-
-    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-
-    alert(`Attendance for ${selectedMonthYear} saved successfully!`);
+  const handleSaveAttendance = async () => {
+    setLoading(true);
+    try {
+      await saveAttendanceData(selectedMonthYear, attendanceData);
+      alert(`Attendance for ${selectedMonthYear} saved successfully!`);
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+      alert('Error saving attendance. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Load saved attendance data
   const loadAttendanceData = () => {
-    const contextKey = getContextKey();
-    const monthKey = selectedMonthYear.replace(' ', '-');
-    const storageKey = `attendance_${contextKey}_${monthKey}`;
-    
-    const savedData = localStorage.getItem(storageKey);
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      
-      // Transform back to component format
-      const transformedData = {};
-      Object.keys(parsedData).forEach(internId => {
-        if (internId !== 'savedAt' && internId !== 'context' && internId !== 'monthYear') {
-          const internData = parsedData[internId];
-          weeks.forEach((week, index) => {
-            const weekKey = `week${index + 1}`;
-            const attendanceKey = getAttendanceKey(internId, week);
-            if (internData[weekKey]) {
-              transformedData[attendanceKey] = internData[weekKey];
-            }
-          });
-        }
-      });
-      
-      setAttendanceData(transformedData);
-    } else {
-      setAttendanceData({});
-    }
+    const savedData = getAttendanceData(selectedMonthYear);
+    setAttendanceData(savedData);
   };
 
   // Load data when month changes
@@ -473,9 +439,10 @@ const AttendanceMatrix = ({ batchId, streamName }) => {
               <button 
                 className="btn btn-primary save-btn"
                 onClick={handleSaveAttendance}
+                disabled={loading}
               >
                 <Save size={16} />
-                Save Attendance
+                {loading ? 'Saving...' : 'Save Attendance'}
               </button>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { Search, Plus, User, LogOut } from 'lucide-react';
 import Hamburger from './Hamburger';
 import './TopBar.css';
 
-const TopBar = ({ onAddIntern, onLogout, onToggleSidebar, isSidebarOpen, onSearch, searchTerm }) => {
+const TopBar = ({ onAddIntern, onLogout, onToggleSidebar, isSidebarOpen, onSearch, searchTerm, user }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileRef = useRef(null);
 

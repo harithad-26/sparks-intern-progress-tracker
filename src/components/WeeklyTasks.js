@@ -5,7 +5,11 @@ import './WeeklyTasks.css';
 const WeeklyTasks = ({ batchId, streamName }) => {
   const { 
     getAllInterns, 
-    getGlobalWeeks
+    getGlobalWeeks,
+    getWeeklyTasks,
+    saveWeeklyTask,
+    updateWeeklyTaskStatus,
+    deleteWeeklyTask
   } = useInterns();
 
   const [formData, setFormData] = useState({
@@ -45,21 +49,22 @@ const WeeklyTasks = ({ batchId, streamName }) => {
 
   const availableInterns = getFilteredInterns();
 
-  // Load existing tasks from localStorage on component mount
-  useEffect(() => {
-    const storageKey = `weeklyTasks_${streamName || 'default'}_${batchId || 'all'}`;
-    const savedTasks = localStorage.getItem(storageKey);
-    if (savedTasks) {
-      setTasks(JSON.parse(savedTasks));
-    }
-  }, [batchId, streamName]);
+  // Load tasks from Supabase
+  const loadTasks = useCallback(() => {
+    const weeklyTasks = getWeeklyTasks(streamName, batchId);
+    
+    // Separate general tasks (Section A) from specific assignments (Section B)
+    const generalTasks = weeklyTasks.filter(task => !task.intern_id);
+    const assignments = weeklyTasks.filter(task => task.intern_id);
+    
+    setTasks(generalTasks);
+    setSectionBData(assignments);
+  }, [getWeeklyTasks, streamName, batchId]);
 
-  // Save tasks to localStorage whenever tasks change
-  const saveTasks = (updatedTasks) => {
-    const storageKey = `weeklyTasks_${streamName || 'default'}_${batchId || 'all'}`;
-    localStorage.setItem(storageKey, JSON.stringify(updatedTasks));
-    setTasks(updatedTasks);
-  };
+  // Load tasks on component mount and when dependencies change
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -80,21 +85,16 @@ const WeeklyTasks = ({ batchId, streamName }) => {
     setIsSubmitting(true);
 
     try {
-      const newTask = {
-        id: Date.now(),
+      const taskData = {
         internId: null, // No specific intern assigned
         internName: 'General Task', // General task for all interns
         weekNumber: formData.weekNumber,
         taskTitle: formData.taskTitle.trim(),
         taskDescription: formData.taskDescription.trim(),
-        status: 'Not Tried',
-        createdAt: new Date().toISOString(),
-        batchId: batchId,
-        streamName: streamName
+        status: 'Not Tried'
       };
 
-      const updatedTasks = [...tasks, newTask];
-      saveTasks(updatedTasks);
+      await saveWeeklyTask(streamName, batchId, taskData);
 
       // Reset form
       setFormData({
@@ -104,7 +104,10 @@ const WeeklyTasks = ({ batchId, streamName }) => {
         taskDescription: ''
       });
 
-      console.log('Task saved successfully:', newTask);
+      // Reload tasks
+      loadTasks();
+
+      console.log('Task saved successfully');
     } catch (error) {
       console.error('Error saving task:', error);
       alert('Error saving task. Please try again.');
@@ -112,48 +115,6 @@ const WeeklyTasks = ({ batchId, streamName }) => {
       setIsSubmitting(false);
     }
   };
-
-  // Section B Functions
-  const loadSectionBData = useCallback(() => {
-    const storageKey = `sectionB_${streamName || 'default'}_${batchId || 'all'}`;
-    const savedData = localStorage.getItem(storageKey);
-    if (savedData) {
-      setSectionBData(JSON.parse(savedData));
-    }
-  }, [streamName, batchId]);
-
-  const saveSectionBData = (data) => {
-    const storageKey = `sectionB_${streamName || 'default'}_${batchId || 'all'}`;
-    localStorage.setItem(storageKey, JSON.stringify(data));
-    setSectionBData(data);
-  };
-
-  const addTaskAssignment = (taskData) => {
-    const newAssignment = {
-      id: Date.now(),
-      ...taskData,
-      createdAt: new Date().toISOString()
-    };
-    const updatedData = [...sectionBData, newAssignment];
-    saveSectionBData(updatedData);
-  };
-
-  const updateTaskAssignment = (id, updatedData) => {
-    const updatedAssignments = sectionBData.map(assignment =>
-      assignment.id === id ? { ...assignment, ...updatedData } : assignment
-    );
-    saveSectionBData(updatedAssignments);
-  };
-
-  const deleteTaskAssignment = (id) => {
-    const updatedAssignments = sectionBData.filter(assignment => assignment.id !== id);
-    saveSectionBData(updatedAssignments);
-  };
-
-  // Load Section B data on mount
-  useEffect(() => {
-    loadSectionBData();
-  }, [batchId, streamName, loadSectionBData]);
 
   return (
     <div className="weekly-tasks">
@@ -230,13 +191,36 @@ const WeeklyTasks = ({ batchId, streamName }) => {
         availableInterns={availableInterns}
         globalWeeks={globalWeeks}
         sectionBData={sectionBData}
-        onAddAssignment={addTaskAssignment}
-        onUpdateAssignment={updateTaskAssignment}
-        onDeleteAssignment={deleteTaskAssignment}
+        onAddAssignment={async (assignmentData) => {
+          try {
+            await saveWeeklyTask(streamName, batchId, assignmentData);
+            loadTasks();
+          } catch (error) {
+            console.error('Error adding assignment:', error);
+            alert('Error adding assignment. Please try again.');
+          }
+        }}
+        onUpdateAssignment={async (assignmentId, updatedData) => {
+          try {
+            await updateWeeklyTaskStatus(assignmentId, updatedData);
+            loadTasks();
+          } catch (error) {
+            console.error('Error updating assignment:', error);
+            alert('Error updating assignment. Please try again.');
+          }
+        }}
+        onDeleteAssignment={async (assignmentId) => {
+          try {
+            await deleteWeeklyTask(assignmentId);
+            loadTasks();
+          } catch (error) {
+            console.error('Error deleting assignment:', error);
+            alert('Error deleting assignment. Please try again.');
+          }
+        }}
         editingTask={editingTask}
         setEditingTask={setEditingTask}
       />
-
 
       {/* Section C - Weekly Task Summary (Read-only mirror of Section B) */}
       <WeeklyTaskSummary sectionBData={sectionBData} />
@@ -290,7 +274,7 @@ const SectionB = ({
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.internId || !formData.taskId) {
@@ -305,8 +289,8 @@ const SectionB = ({
       internId: parseInt(formData.internId),
       internName: selectedIntern?.name || 'Unknown',
       taskId: parseInt(formData.taskId),
-      taskTitle: selectedTask?.taskTitle || 'Unknown Task',
-      weekNumber: selectedTask?.weekNumber || formData.weekNumber,
+      taskTitle: selectedTask?.task_title || selectedTask?.taskTitle || 'Unknown Task',
+      weekNumber: selectedTask?.week_number || selectedTask?.weekNumber || formData.weekNumber,
       status: formData.status,
       projectLink: formData.projectLink.trim(),
       remarks: formData.remarks.trim(),
@@ -314,37 +298,41 @@ const SectionB = ({
       totalGrade: Object.values(formData.grades).reduce((sum, grade) => sum + grade, 0) / 4
     };
 
-    if (editingTask) {
-      onUpdateAssignment(editingTask.id, assignmentData);
-      setEditingTask(null);
-    } else {
-      onAddAssignment(assignmentData);
-    }
-
-    // Reset form
-    setFormData({
-      internId: '',
-      taskId: '',
-      weekNumber: '',
-      status: 'Not Tried',
-      projectLink: '',
-      remarks: '',
-      grades: {
-        onTimeSubmission: 0,
-        projectPerfection: 0,
-        teamWork: 0,
-        uniqueness: 0
+    try {
+      if (editingTask) {
+        await onUpdateAssignment(editingTask.id, assignmentData);
+        setEditingTask(null);
+      } else {
+        await onAddAssignment(assignmentData);
       }
-    });
+
+      // Reset form
+      setFormData({
+        internId: '',
+        taskId: '',
+        weekNumber: '',
+        status: 'Not Tried',
+        projectLink: '',
+        remarks: '',
+        grades: {
+          onTimeSubmission: 0,
+          projectPerfection: 0,
+          teamWork: 0,
+          uniqueness: 0
+        }
+      });
+    } catch (error) {
+      console.error('Error saving assignment:', error);
+    }
   };
 
   const handleEdit = (assignment) => {
     setFormData({
-      internId: assignment.internId.toString(),
-      taskId: assignment.taskId.toString(),
-      weekNumber: assignment.weekNumber,
+      internId: assignment.intern_id?.toString() || assignment.internId?.toString() || '',
+      taskId: assignment.task_id?.toString() || assignment.taskId?.toString() || '',
+      weekNumber: assignment.week_number || assignment.weekNumber || '',
       status: assignment.status || 'Not Tried',
-      projectLink: assignment.projectLink || '',
+      projectLink: assignment.project_link || assignment.projectLink || '',
       remarks: assignment.remarks || '',
       grades: assignment.grades || {
         onTimeSubmission: 0,
@@ -356,9 +344,9 @@ const SectionB = ({
     setEditingTask(assignment);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this assignment?')) {
-      onDeleteAssignment(id);
+      await onDeleteAssignment(id);
     }
   };
 
@@ -424,7 +412,7 @@ const SectionB = ({
                   <option value="">Choose a task...</option>
                   {tasks.map(task => (
                     <option key={task.id} value={task.id}>
-                      {task.weekNumber} - {task.taskTitle}
+                      {task.week_number || task.weekNumber} - {task.task_title || task.taskTitle}
                     </option>
                   ))}
                 </select>
@@ -579,19 +567,25 @@ const SectionB = ({
                     <tr key={assignment.id} className="assignment-row">
                       <td className="intern-cell">
                         <div className="intern-info">
-                          <span className="intern-name">{assignment.internName}</span>
+                          <span className="intern-name">{assignment.intern_name || assignment.internName}</span>
                         </div>
                       </td>
                       <td className="task-cell">
                         <div className="task-info">
-                          <span className="week-number">{assignment.weekNumber}</span>
-                          <span className="task-title">{assignment.taskTitle}</span>
+                          <span className="week-number">{assignment.week_number || assignment.weekNumber}</span>
+                          <span className="task-title">{assignment.task_title || assignment.taskTitle}</span>
                         </div>
                       </td>
                       <td className="status-cell">
                         <select
                           value={assignment.status || 'Not Tried'}
-                          onChange={(e) => onUpdateAssignment(assignment.id, { ...assignment, status: e.target.value })}
+                          onChange={async (e) => {
+                            try {
+                              await onUpdateAssignment(assignment.id, { ...assignment, status: e.target.value });
+                            } catch (error) {
+                              console.error('Error updating status:', error);
+                            }
+                          }}
                           className={`status-dropdown ${getStatusClass(assignment.status || 'Not Tried')}`}
                         >
                           <option value="Not Tried">Not Tried</option>
@@ -602,13 +596,13 @@ const SectionB = ({
                       </td>
                       <td className="link-cell">
                         <div className="project-link">
-                          {assignment.projectLink ? (
+                          {(assignment.project_link || assignment.projectLink) ? (
                             <a 
-                              href={assignment.projectLink} 
+                              href={assignment.project_link || assignment.projectLink} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="link-text"
-                              title={assignment.projectLink}
+                              title={assignment.project_link || assignment.projectLink}
                             >
                               🔗 View Link
                             </a>
@@ -626,8 +620,8 @@ const SectionB = ({
                         </div>
                       </td>
                       <td className="total-cell">
-                        <span className={`total-grade ${getGradeColor(assignment.totalGrade || 0)}`}>
-                          {(assignment.totalGrade || 0).toFixed(1)}
+                        <span className={`total-grade ${getGradeColor(assignment.total_grade || assignment.totalGrade || 0)}`}>
+                          {(assignment.total_grade || assignment.totalGrade || 0).toFixed(1)}
                         </span>
                       </td>
                       <td className="remarks-cell">
@@ -718,11 +712,11 @@ const WeeklyTaskSummary = ({ sectionBData }) => {
               <tbody>
                 {sectionBData.map((assignment) => (
                   <tr key={assignment.id}>
-                    <td>{assignment.internName}</td>
-                    <td>{assignment.weekNumber}</td>
-                    <td>{assignment.taskTitle}</td>
+                    <td>{assignment.intern_name || assignment.internName}</td>
+                    <td>{assignment.week_number || assignment.weekNumber}</td>
+                    <td>{assignment.task_title || assignment.taskTitle}</td>
                     <td>{assignment.status || 'Not Completed'}</td>
-                    <td>{(assignment.totalGrade || 0).toFixed(1)}</td>
+                    <td>{(assignment.total_grade || assignment.totalGrade || 0).toFixed(1)}</td>
                   </tr>
                 ))}
               </tbody>

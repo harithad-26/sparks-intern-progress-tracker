@@ -147,16 +147,21 @@ const EditInternModal = ({ intern, onClose, onSave }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (validateForm()) {
-      const updatedIntern = {
-        ...intern,
-        ...formData
-      };
-      onSave(updatedIntern);
-      onClose();
+      try {
+        const updatedIntern = {
+          ...intern,
+          ...formData
+        };
+        await onSave(updatedIntern);
+        onClose();
+      } catch (error) {
+        console.error('Error updating intern:', error);
+        alert('Error updating intern. Please try again.');
+      }
     }
   };
 

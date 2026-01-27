@@ -23,9 +23,15 @@ const InternDetailsPanel = ({ intern, onClose, onUpdateIntern, onDeleteIntern })
     setShowEditModal(true);
   };
 
-  const handleSaveIntern = (updatedIntern) => {
+  const handleSaveIntern = async (updatedIntern) => {
     if (onUpdateIntern) {
-      onUpdateIntern(updatedIntern);
+      try {
+        await onUpdateIntern(updatedIntern);
+      } catch (error) {
+        console.error('Error updating intern:', error);
+        alert('Error updating intern. Please try again.');
+        return;
+      }
     }
     setShowEditModal(false);
   };
@@ -34,9 +40,15 @@ const InternDetailsPanel = ({ intern, onClose, onUpdateIntern, onDeleteIntern })
     setShowDeleteConfirm(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (onDeleteIntern) {
-      onDeleteIntern(intern.id);
+      try {
+        await onDeleteIntern(intern.id);
+      } catch (error) {
+        console.error('Error deleting intern:', error);
+        alert('Error deleting intern. Please try again.');
+        return;
+      }
     }
     onClose(); // Close the details panel after deletion
   };

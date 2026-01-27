@@ -41,28 +41,33 @@ const AddInternModal = ({ onClose, currentDomain }) => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Create intern object with proper field mapping
-    const internData = {
-      name: formData.fullName,
-      email: formData.email,
-      phone: formData.phone,
-      college: formData.college,
-      domain: formData.domain,
-      batch: formData.batch,
-      academicYear: formData.academicYear,
-      onboardingStatus: formData.onboardingStatus,
-      additionalDetails: formData.additionalDetails
-    };
+    try {
+      // Create intern object with proper field mapping
+      const internData = {
+        name: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        college: formData.college,
+        domain: formData.domain,
+        batch: formData.batch,
+        academicYear: formData.academicYear,
+        onboardingStatus: formData.onboardingStatus,
+        additionalDetails: formData.additionalDetails
+      };
 
-    // Add intern to the context - use the selected domain from the form
-    const newIntern = addIntern(internData);
-    
-    console.log('Added intern:', newIntern);
-    alert(`Intern ${internData.name} has been added successfully!`);
-    onClose();
+      // Add intern to the context - use the selected domain from the form
+      const newIntern = await addIntern(internData);
+      
+      console.log('Added intern:', newIntern);
+      alert(`Intern ${internData.name} has been added successfully!`);
+      onClose();
+    } catch (error) {
+      console.error('Error adding intern:', error);
+      alert('Error adding intern. Please try again.');
+    }
   };
 
   // Get all available streams (default + custom)
