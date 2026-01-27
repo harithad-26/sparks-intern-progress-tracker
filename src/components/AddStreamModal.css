@@ -1,0 +1,23 @@
+.add-stream-modal {
+  max-width: 500px;
+  width: 95%;
+}
+
+.stream-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.modal-actions .btn {
+  min-width: 100px;
+}

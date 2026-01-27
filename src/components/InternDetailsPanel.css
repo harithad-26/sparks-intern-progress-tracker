@@ -1,0 +1,264 @@
+.intern-details-panel {
+  max-width: 600px;
+  width: 95%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.intern-profile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.intern-avatar-large {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #FF8A00, #ff9f26);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.intern-title-info h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 4px 0;
+}
+
+.intern-domain-title {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0 0 8px 0;
+}
+
+.details-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  margin-bottom: 32px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.info-section {
+  padding: 0 4px;
+}
+
+.info-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 20px 0;
+  padding-left: 0;
+}
+
+.info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-left: 0;
+}
+
+.info-item {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 16px;
+  align-items: start;
+  padding: 0;
+  margin: 0;
+}
+
+.info-item svg {
+  color: #6b7280;
+  flex-shrink: 0;
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+}
+
+.info-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 40px;
+  justify-content: flex-start;
+}
+
+.info-item label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.info-item span {
+  font-size: 14px;
+  color: #1f2937;
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.additional-notes {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  margin-left: 0;
+}
+
+.additional-notes p {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.details-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.details-actions .btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  justify-content: center;
+}
+
+/* Responsive behavior */
+@media (max-width: 640px) {
+  .intern-details-panel {
+    width: 98%;
+    max-width: none;
+    margin: 10px;
+  }
+  
+  .details-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .intern-profile {
+    width: 100%;
+  }
+  
+  .close-btn {
+    align-self: flex-end;
+  }
+  
+  .info-item {
+    grid-template-columns: 20px 1fr;
+    gap: 12px;
+  }
+  
+  .details-actions {
+    flex-direction: column;
+  }
+  
+  .details-actions .btn {
+    width: 100%;
+  }
+}
+
+/* Ensure consistent alignment across all sections */
+.info-section:not(:last-child) {
+  border-bottom: 1px solid #f3f4f6;
+  padding-bottom: 24px;
+}
+
+/* Fix any potential layout shifts */
+.info-item div {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* Ensure icons stay aligned */
+.info-item svg {
+  position: relative;
+  top: 1px;
+}
+
+/* Delete Confirmation Modal */
+.delete-confirm-modal {
+  max-width: 450px;
+  width: 95%;
+  z-index: 1200; /* Higher than edit modal */
+}
+
+.delete-confirm-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.warning-icon {
+  padding: 16px;
+  background: #fef2f2;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-confirm-content p {
+  font-size: 16px;
+  color: #374151;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.delete-confirm-content .warning-text {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.delete-confirm-content strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+/* Responsive delete modal */
+@media (max-width: 640px) {
+  .delete-confirm-modal {
+    width: 98%;
+    margin: 10px;
+  }
+  
+  .warning-icon {
+    padding: 12px;
+  }
+  
+  .warning-icon svg {
+    width: 36px;
+    height: 36px;
+  }
+}

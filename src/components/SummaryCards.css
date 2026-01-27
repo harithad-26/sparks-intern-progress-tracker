@@ -1,0 +1,143 @@
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.summary-card {
+  width: 330px;
+  height: 150px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  transition: all 0.3s ease-in-out;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+
+.summary-card:hover {
+  box-shadow: 0px 8px 25px rgba(255, 138, 0, 0.15);
+  border-color: #ff8a00;
+  transform: translateY(-2px);
+}
+
+/* No before pseudo-element */
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* Card header removed - layout is now icon + content side by side */
+
+.card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #F1F5FF;
+  color: #4F46E5;
+  flex-shrink: 0;
+  transition: all 0.3s ease-in-out;
+}
+
+.card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1;
+  margin-bottom: 6px;
+  transition: color 0.3s ease-in-out;
+}
+
+.card-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #6B7280;
+  margin: 0 0 2px 0;
+  line-height: 1.3;
+  transition: color 0.3s ease-in-out;
+}
+
+.card-description {
+  font-size: 14px;
+  color: #9CA3AF;
+  margin: 0;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+/* All icons use the same background and color */
+
+/* Orange hover effects for card elements */
+.summary-card:hover .card-icon {
+  background-color: #fff7ed;
+  color: #ff8a00;
+  transform: scale(1.05);
+}
+
+.summary-card:hover .card-value {
+  color: #ff8a00;
+}
+
+.summary-card:hover .card-title {
+  color: #374151;
+}
+
+/* No special active or clickable states */
+
+/* Tablet view: 2 cards per row */
+@media (max-width: 1024px) {
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+/* Mobile view: 1 card per row */
+@media (max-width: 640px) {
+  .summary-cards {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  
+  .summary-card {
+    width: 100%;
+    height: 140px;
+    padding: 18px;
+    gap: 14px;
+  }
+  
+  .card-value {
+    font-size: 24px;
+  }
+  
+  .card-icon {
+    width: 46px;
+    height: 46px;
+  }
+  
+  .card-title {
+    font-size: 15px;
+  }
+  
+  .card-description {
+    font-size: 13px;
+  }
+}

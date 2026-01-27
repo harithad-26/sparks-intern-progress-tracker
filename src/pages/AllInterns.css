@@ -1,0 +1,90 @@
+.all-interns {
+  padding: 0;
+}
+
+.page-header {
+  margin-bottom: 32px;
+}
+
+.page-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.page-header p {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.filters-section {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  align-items: center;
+}
+
+.search-filter {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-filter .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  z-index: 1;
+}
+
+.search-filter .search-input {
+  width: 100%;
+  padding: 12px 16px 12px 44px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: white;
+}
+
+.domain-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+}
+
+.filter-select {
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: white;
+  min-width: 150px;
+}
+
+.results-info {
+  margin-bottom: 24px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.interns-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.no-results {
+  text-align: center;
+  padding: 48px 24px;
+  color: #6b7280;
+}
+
+.no-results p {
+  font-size: 16px;
+  margin: 0;
+}

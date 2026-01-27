@@ -1,0 +1,131 @@
+.recent-interns-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 300px;
+  height: 100vh;
+  background: white;
+  border-left: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+}
+
+.panel-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-title h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.header-title svg {
+  color: #6b7280;
+}
+
+.recent-interns-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+}
+
+.recent-intern-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.recent-intern-item:hover {
+  background-color: #f9fafb;
+}
+
+.intern-avatar-small {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #FF8A00, #ff9f26);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.intern-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.intern-name-small {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.intern-domain-small {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-pill-small {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.panel-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.view-all-btn {
+  width: 100%;
+  padding: 10px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-all-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}.
+no-results {
+  padding: 20px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.no-results p {
+  margin: 0;
+}

@@ -1,0 +1,35 @@
+.hamburger-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hamburger-btn:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.hamburger-btn.active {
+  background-color: #FF8A00;
+  color: white;
+}
+
+.hamburger-btn.active:hover {
+  background-color: #e67700;
+}
+
+/* Show hamburger on all screens or only mobile - adjust as needed */
+@media (min-width: 768px) {
+  .hamburger-btn {
+    /* Show on all screens - remove this block to show only on mobile */
+    display: flex;
+  }
+}

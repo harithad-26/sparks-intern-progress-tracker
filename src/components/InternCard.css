@@ -1,0 +1,76 @@
+.intern-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.intern-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.intern-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.intern-avatar {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #FF8A00, #ff9f26);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.intern-basic-info {
+  flex: 1;
+}
+
+.intern-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 4px 0;
+}
+
+.intern-domain {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.intern-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.detail-item svg {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.view-details-btn {
+  width: 100%;
+  margin-top: 8px;
+}
