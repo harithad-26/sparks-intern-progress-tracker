@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useInterns } from '../context/InternContext';
 import './WeeklyTasks.css';
 
@@ -113,44 +113,14 @@ const WeeklyTasks = ({ batchId, streamName }) => {
     }
   };
 
-  const handleStatusChange = (taskId, newStatus) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === taskId ? { ...task, status: newStatus } : task
-    );
-    saveTasks(updatedTasks);
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Completed':
-        return 'status-completed';
-      case 'Not Completed':
-        return 'status-not-completed';
-      case 'Not Tried':
-        return 'status-not-tried';
-      default:
-        return 'status-not-tried';
-    }
-  };
-
-  // Group tasks by intern and week for better organization
-  const groupedTasks = tasks.reduce((acc, task) => {
-    const key = `${task.internName}_${task.weekNumber}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(task);
-    return acc;
-  }, {});
-
   // Section B Functions
-  const loadSectionBData = () => {
+  const loadSectionBData = useCallback(() => {
     const storageKey = `sectionB_${streamName || 'default'}_${batchId || 'all'}`;
     const savedData = localStorage.getItem(storageKey);
     if (savedData) {
       setSectionBData(JSON.parse(savedData));
     }
-  };
+  }, [streamName, batchId]);
 
   const saveSectionBData = (data) => {
     const storageKey = `sectionB_${streamName || 'default'}_${batchId || 'all'}`;
@@ -183,7 +153,7 @@ const WeeklyTasks = ({ batchId, streamName }) => {
   // Load Section B data on mount
   useEffect(() => {
     loadSectionBData();
-  }, [batchId, streamName]);
+  }, [batchId, streamName, loadSectionBData]);
 
   return (
     <div className="weekly-tasks">
