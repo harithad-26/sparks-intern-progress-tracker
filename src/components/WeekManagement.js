@@ -54,29 +54,54 @@ const WeekManagement = () => {
     return newErrors;
   };
 
-  const handleAddWeek = (e) => {
+  const handleAddWeek = async (e) => {
     e.preventDefault();
     
+    console.log('=== ADD WEEK DEBUG ===');
+    console.log('Form data:', weekForm);
+    console.log('addGlobalWeek function:', addGlobalWeek);
+    
     const validationErrors = validateForm();
+    console.log('Validation errors:', validationErrors);
+    
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
     
-    addGlobalWeek({
-      name: weekForm.name.trim(),
-      description: weekForm.description.trim()
-    });
-    
-    // Reset form
-    setWeekForm({ name: '', description: '' });
-    setErrors({});
-    setShowAddForm(false);
+    try {
+      console.log('Calling addGlobalWeek...');
+      const result = await addGlobalWeek({
+        name: weekForm.name.trim(),
+        description: weekForm.description.trim()
+      });
+      
+      console.log('addGlobalWeek result:', result);
+      
+      // Reset form
+      setWeekForm({ name: '', description: '' });
+      setErrors({});
+      setShowAddForm(false);
+      
+      alert('Week added successfully!');
+    } catch (error) {
+      console.error('=== ERROR DETAILS ===');
+      console.error('Error object:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      alert('Error adding week. Please try again.');
+    }
   };
 
-  const handleDeleteWeek = (weekId) => {
+  const handleDeleteWeek = async (weekId) => {
     if (window.confirm('Are you sure you want to delete this week? This will affect all performance evaluations.')) {
-      deleteGlobalWeek(weekId);
+      try {
+        await deleteGlobalWeek(weekId);
+        alert('Week deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting week:', error);
+        alert('Error deleting week. Please try again.');
+      }
     }
   };
 

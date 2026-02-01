@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Users, CheckCircle, BarChart3, ArrowLeft, MoreVertical } from 'lucide-react';
 import { useInterns } from '../context/InternContext';
@@ -16,7 +16,7 @@ import './BatchDetail.css';
 const BatchDetail = () => {
   const { batchId } = useParams();
   const navigate = useNavigate();
-  const { getInternsByBatch, updateIntern, deleteIntern, addIntern, getBatchById, deleteBatch, archiveBatch } = useInterns();
+  const { getInternsByBatchId, updateIntern, deleteIntern, addIntern, getBatchById, deleteBatch, archiveBatch } = useInterns();
   const [activeTab, setActiveTab] = useState('interns');
   const [selectedIntern, setSelectedIntern] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -25,11 +25,32 @@ const BatchDetail = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBatchMenu, setShowBatchMenu] = useState(false);
   const [showDeleteBatchModal, setShowDeleteBatchModal] = useState(false);
+  const [batchInterns, setBatchInterns] = useState([]);
+  const [loading, setLoading] = useState(true);
   
-  // Get batch and interns for this specific batch
+  // Get batch data
   const batch = getBatchById(batchId);
   const batchName = batch ? batch.name : `Batch ${batchId}`;
-  const batchInterns = getInternsByBatch(batchName);
+
+  // Load interns for this batch using the proper batch ID
+  useEffect(() => {
+    const loadBatchInterns = async () => {
+      setLoading(true);
+      try {
+        const interns = await getInternsByBatchId(batchId);
+        setBatchInterns(interns);
+      } catch (error) {
+        console.error('Error loading batch interns:', error);
+        setBatchInterns([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (batchId) {
+      loadBatchInterns();
+    }
+  }, [batchId, getInternsByBatchId]);
   const batchData = {
     name: batchName,
     totalInterns: batchInterns.length,
@@ -57,10 +78,18 @@ const BatchDetail = () => {
     setShowEditModal(true);
   };
 
-  const handleSaveIntern = (updatedIntern) => {
-    updateIntern(updatedIntern.id, updatedIntern);
-    setShowEditModal(false);
-    setSelectedIntern(null);
+  const handleSaveIntern = async (updatedIntern) => {
+    try {
+      await updateIntern(updatedIntern.id, updatedIntern);
+      // Reload batch interns after updating
+      const updatedInterns = await getInternsByBatchId(batchId);
+      setBatchInterns(updatedInterns);
+      setShowEditModal(false);
+      setSelectedIntern(null);
+    } catch (error) {
+      console.error('Error updating intern:', error);
+      alert('Failed to update intern. Please try again.');
+    }
   };
 
   const handleDeleteIntern = (intern) => {
@@ -69,26 +98,44 @@ const BatchDetail = () => {
     setShowDeleteModal(true);
   };
 
-  const confirmDeleteIntern = (intern) => {
-    deleteIntern(intern.id);
-    setShowDeleteModal(false);
-    setSelectedIntern(null);
-    console.log('Deleted intern:', intern);
+  const confirmDeleteIntern = async (intern) => {
+    try {
+      await deleteIntern(intern.id);
+      // Reload batch interns after deleting
+      const updatedInterns = await getInternsByBatchId(batchId);
+      setBatchInterns(updatedInterns);
+      setShowDeleteModal(false);
+      setSelectedIntern(null);
+      console.log('Deleted intern:', intern);
+    } catch (error) {
+      console.error('Error deleting intern:', error);
+      alert('Failed to delete intern. Please try again.');
+    }
   };
 
   const handleAddIntern = () => {
     setShowAddModal(true);
   };
 
-  const handleSaveNewIntern = (internData) => {
-    // Add the intern with the current batch assigned
+  const handleSaveNewIntern = async (internData) => {
+    // Add the intern with the current batch ID assigned
     const internWithBatch = {
       ...internData,
-      batch: batchName
+      batch: batchName,
+      batch_id: batchId // Ensure proper batch ID linking
     };
-    addIntern(internWithBatch);
-    setShowAddModal(false);
-    console.log('Added intern to batch:', internWithBatch);
+    
+    try {
+      await addIntern(internWithBatch);
+      // Reload batch interns after adding
+      const updatedInterns = await getInternsByBatchId(batchId);
+      setBatchInterns(updatedInterns);
+      setShowAddModal(false);
+      console.log('Added intern to batch:', internWithBatch);
+    } catch (error) {
+      console.error('Error adding intern to batch:', error);
+      alert('Failed to add intern to batch. Please try again.');
+    }
   };
 
   const closeModals = () => {
@@ -133,7 +180,11 @@ const BatchDetail = () => {
       case 'interns':
         return (
           <div className="interns-content">
-            {batchInterns.length > 0 ? (
+            {loading ? (
+              <div className="loading-state">
+                <p>Loading interns...</p>
+              </div>
+            ) : batchInterns.length > 0 ? (
               <div className="interns-table-container">
                 <div className="interns-header">
                   <h3>Interns in {batchData.name} ({batchInterns.length})</h3>

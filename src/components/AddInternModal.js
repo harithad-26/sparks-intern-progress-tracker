@@ -13,6 +13,7 @@ const AddInternModal = ({ onClose, currentDomain }) => {
     domain: '', // This stores the stream name (keeping 'domain' for backward compatibility)
     batch: '',
     academicYear: '',
+    joinedDate: new Date().toISOString().split('T')[0], // Default to today
     onboardingStatus: 'active',
     additionalDetails: ''
   });
@@ -54,6 +55,7 @@ const AddInternModal = ({ onClose, currentDomain }) => {
         domain: formData.domain,
         batch: formData.batch,
         academicYear: formData.academicYear,
+        joinedDate: formData.joinedDate,
         onboardingStatus: formData.onboardingStatus,
         additionalDetails: formData.additionalDetails
       };
@@ -136,6 +138,18 @@ const AddInternModal = ({ onClose, currentDomain }) => {
               type="text"
               name="college"
               value={formData.college}
+              onChange={handleInputChange}
+              className="form-input"
+              required
+            />
+          </div>
+          
+          <div className="form-group">
+            <label className="form-label">Joined Date *</label>
+            <input
+              type="date"
+              name="joinedDate"
+              value={formData.joinedDate}
               onChange={handleInputChange}
               className="form-input"
               required

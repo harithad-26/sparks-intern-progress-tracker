@@ -1,16 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, FolderOpen, Edit2, Users } from 'lucide-react';
 import { useInterns } from '../context/InternContext';
 import CreateProjectModal from './CreateProjectModal';
 import './BatchProjects.css';
 
 const BatchProjects = ({ batchId }) => {
-  const { getInternsByBatch, getProjectsByBatch, updateProject } = useInterns();
+  const { getInternsByBatchId, getProjectsByBatch, updateProject } = useInterns();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [batchInterns, setBatchInterns] = useState([]);
 
   // Get projects from context
   const projects = getProjectsByBatch(batchId);
+
+  // Load batch interns once
+  useEffect(() => {
+    const loadInterns = async () => {
+      try {
+        const interns = await getInternsByBatchId(batchId);
+        setBatchInterns(interns);
+      } catch (error) {
+        console.error('Error loading batch interns:', error);
+        setBatchInterns([]);
+      }
+    };
+
+    if (batchId) {
+      loadInterns();
+    }
+  }, [batchId, getInternsByBatchId]);
 
   const handleEditProject = (project) => {
     setEditingProject(project);
@@ -70,7 +88,6 @@ const BatchProjects = ({ batchId }) => {
       {projects.length > 0 ? (
         <div className="projects-list">
           {projects.map(project => {
-            const batchInterns = getInternsByBatch(`Batch ${batchId}`);
             const assignedInternsList = project.assignedInterns
               ? batchInterns.filter(intern => project.assignedInterns.includes(intern.id))
               : [];

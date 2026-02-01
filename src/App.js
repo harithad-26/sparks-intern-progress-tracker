@@ -63,9 +63,27 @@ const AppContent = ({ onLogout, user }) => {
     }
   };
 
-  const handleUpdateIntern = (updatedIntern) => {
-    updateIntern(updatedIntern.id, updatedIntern);
-    setSelectedIntern(updatedIntern); // Update the selected intern to reflect changes
+  const handleUpdateIntern = async (updatedIntern) => {
+    try {
+      // Map the form fields to the expected format for updateIntern
+      const updates = {
+        name: updatedIntern.name,
+        email: updatedIntern.email,
+        phone: updatedIntern.phone,
+        college: updatedIntern.college,
+        domain: updatedIntern.domain,
+        batch: updatedIntern.batch,
+        academicYear: updatedIntern.academicYear,
+        status: updatedIntern.status,
+        additionalDetails: updatedIntern.additionalDetails // This was missing!
+      };
+      
+      await updateIntern(updatedIntern.id, updates);
+      setSelectedIntern(updatedIntern); // Update the selected intern to reflect changes
+    } catch (error) {
+      console.error('Error in handleUpdateIntern:', error);
+      throw error; // Re-throw so the modal can handle it
+    }
   };
 
   const handleDeleteIntern = (internId) => {

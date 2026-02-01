@@ -34,6 +34,7 @@ const AttendanceMatrix = ({ batchId, streamName }) => {
   const { 
     getAllInterns, 
     getInternsByBatch, 
+    getInternsByBatchId,
     getInternsByStream, 
     saveAttendanceData, 
     getAttendanceData 
@@ -41,18 +42,37 @@ const AttendanceMatrix = ({ batchId, streamName }) => {
   const [selectedMonthYear, setSelectedMonthYear] = useState('September 2025');
   const [attendanceData, setAttendanceData] = useState({});
   const [loading, setLoading] = useState(false);
+  const [interns, setInterns] = useState([]);
+  const [loadingInterns, setLoadingInterns] = useState(true);
 
-  // Get interns filtered by batch or stream
-  const getFilteredInterns = () => {
-    if (batchId) {
-      return getInternsByBatch(`Batch ${batchId}`);
-    } else if (streamName) {
-      return getInternsByStream(streamName);
-    }
-    return getAllInterns();
-  };
+  // Load interns based on batch ID or stream
+  useEffect(() => {
+    const loadInterns = async () => {
+      setLoadingInterns(true);
+      try {
+        let filtered = [];
+        
+        if (batchId) {
+          // Use batch ID to get interns directly from database
+          filtered = await getInternsByBatchId(batchId);
+        } else if (streamName) {
+          filtered = getInternsByStream(streamName);
+        } else {
+          filtered = getAllInterns();
+        }
+        
+        setInterns(filtered);
+      } catch (error) {
+        console.error('Error loading interns for attendance:', error);
+        setInterns([]);
+      } finally {
+        setLoadingInterns(false);
+      }
+    };
 
-  const interns = getFilteredInterns();
+    loadInterns();
+  }, [batchId, streamName, getInternsByBatchId, getInternsByStream, getAllInterns]);
+
   const allAvailableInterns = getAllInterns(); // Get all interns for export
 
   // Generate Month-Year dropdown options from September 2025 to December 2030
@@ -372,8 +392,17 @@ const AttendanceMatrix = ({ batchId, streamName }) => {
       <div className="attendance-section">
         <h3 className="section-title">Mark Attendance - {selectedMonthYear}</h3>
         
-        <div className="attendance-matrix-card">
-          <div className="matrix-container">
+        {loadingInterns ? (
+          <div className="loading-state">
+            <p>Loading interns...</p>
+          </div>
+        ) : interns.length === 0 ? (
+          <div className="empty-state">
+            <p>No interns found for this batch/stream.</p>
+          </div>
+        ) : (
+          <div className="attendance-matrix-card">
+            <div className="matrix-container">
             <div className="matrix-scroll">
               <table className="attendance-table">
                 <thead>
@@ -446,7 +475,8 @@ const AttendanceMatrix = ({ batchId, streamName }) => {
               </button>
             </div>
           </div>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

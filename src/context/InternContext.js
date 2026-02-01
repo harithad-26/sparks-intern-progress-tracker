@@ -67,8 +67,8 @@ export const InternProvider = ({ children }) => {
       .from('interns')
       .select(`
         *,
-        streams (name),
-        batches (name)
+        streams (id, name),
+        batches (id, name)
       `)
       .order('created_at', { ascending: false });
     
@@ -81,7 +81,11 @@ export const InternProvider = ({ children }) => {
     const transformedData = (data || []).map(intern => ({
       ...intern,
       domain: intern.streams?.name || '',
-      batch: intern.batches?.name || ''
+      batch: intern.batches?.name || '',
+      stream_id: intern.streams?.id || null,
+      batch_id: intern.batches?.id || null,
+      joinedDate: intern.joined_date ? new Date(intern.joined_date).toLocaleDateString() : '',
+      additionalDetails: intern.additional_details || '' // Map database field to UI field
     }));
     
     setInterns(transformedData);
@@ -115,16 +119,27 @@ export const InternProvider = ({ children }) => {
   };
 
   const loadGlobalWeeks = async () => {
-    const { data, error } = await supabase
-      .from('global_weeks')
-      .select('*')
-      .order('week_number');
+    console.log('=== LOADING GLOBAL WEEKS ===');
     
-    if (error) {
-      console.error('Error loading global weeks:', error);
-      return;
+    // Use localStorage primarily for now
+    let localWeeks = JSON.parse(localStorage.getItem('global_weeks') || '[]');
+    console.log('Weeks from localStorage:', localWeeks);
+    
+    // If no weeks exist, create default weeks
+    if (localWeeks.length === 0) {
+      const defaultWeeks = [
+        { id: 1, name: 'Week 1', description: 'First week evaluation', week_number: 1, created_at: new Date().toISOString() },
+        { id: 2, name: 'Week 2', description: 'Second week evaluation', week_number: 2, created_at: new Date().toISOString() },
+        { id: 3, name: 'Week 3', description: 'Third week evaluation', week_number: 3, created_at: new Date().toISOString() },
+        { id: 4, name: 'Week 4', description: 'Fourth week evaluation', week_number: 4, created_at: new Date().toISOString() }
+      ];
+      localStorage.setItem('global_weeks', JSON.stringify(defaultWeeks));
+      localWeeks = defaultWeeks;
+      console.log('Created default weeks in localStorage');
     }
-    setGlobalWeeks(data || []);
+    
+    setGlobalWeeks(localWeeks);
+    console.log('Set global weeks state:', localWeeks);
   };
 
   const loadProjects = async () => {
@@ -148,7 +163,7 @@ export const InternProvider = ({ children }) => {
 
   const loadPerformanceEvaluations = async () => {
     const { data, error } = await supabase
-      .from('performance_evaluations')
+      .from('performance')
       .select(`
         *,
         interns (name, domain, batch)
@@ -226,7 +241,7 @@ export const InternProvider = ({ children }) => {
       }
     }
 
-    // Get batch ID if batch is provided
+    // Get batch ID if batch is provided - THIS IS MANDATORY
     if (internData.batch) {
       const { data: batchData, error: batchError } = await supabase
         .from('batches')
@@ -255,13 +270,21 @@ export const InternProvider = ({ children }) => {
       }
     }
 
+    // ENSURE batch_id is not null
+    if (!batchId) {
+      throw new Error('Intern must be assigned to a batch');
+    }
+
     const newIntern = {
       name: internData.name,
       email: internData.email,
       college: internData.college,
       phone: internData.phone,
+      academic_year: internData.academicYear,
+      joined_date: internData.joinedDate,
+      additional_details: internData.additionalDetails,
       stream_id: streamId,
-      batch_id: batchId,
+      batch_id: batchId, // MANDATORY FOREIGN KEY
       status: internData.onboardingStatus || 'active'
     };
 
@@ -272,8 +295,8 @@ export const InternProvider = ({ children }) => {
       .insert([newIntern])
       .select(`
         *,
-        streams (name),
-        batches (name)
+        streams (id, name),
+        batches (id, name)
       `)
       .single();
 
@@ -288,7 +311,11 @@ export const InternProvider = ({ children }) => {
     const transformedData = {
       ...data,
       domain: data.streams?.name || '',
-      batch: data.batches?.name || ''
+      batch: data.batches?.name || '',
+      stream_id: data.streams?.id || null,
+      batch_id: data.batches?.id || null,
+      joinedDate: data.joined_date ? new Date(data.joined_date).toLocaleDateString() : '',
+      additionalDetails: data.additional_details || '' // Map database field to UI field
     };
 
     // Update local state
@@ -297,21 +324,88 @@ export const InternProvider = ({ children }) => {
   };
 
   const updateIntern = async (internId, updates) => {
+    console.log('Updating intern:', internId, 'with updates:', updates);
+    
+    // Get stream and batch IDs if names are provided
+    let streamId = updates.stream_id;
+    let batchId = updates.batch_id;
+
+    // Handle stream update
+    if (updates.domain && !streamId) {
+      const { data: streamData, error: streamError } = await supabase
+        .from('streams')
+        .select('id')
+        .eq('name', updates.domain)
+        .single();
+      
+      if (streamError && streamError.code === 'PGRST116') {
+        // Stream doesn't exist, create it
+        const { data: newStream, error: createStreamError } = await supabase
+          .from('streams')
+          .insert([{ name: updates.domain }])
+          .select('id')
+          .single();
+        
+        if (createStreamError) {
+          console.error('Error creating stream:', createStreamError);
+          throw createStreamError;
+        }
+        streamId = newStream.id;
+      } else if (!streamError) {
+        streamId = streamData.id;
+      }
+    }
+
+    // Handle batch update - MANDATORY
+    if (updates.batch && !batchId) {
+      const { data: batchData, error: batchError } = await supabase
+        .from('batches')
+        .select('id')
+        .eq('name', updates.batch)
+        .single();
+      
+      if (batchError && batchError.code === 'PGRST116') {
+        // Batch doesn't exist, create it
+        const { data: newBatch, error: createBatchError } = await supabase
+          .from('batches')
+          .insert([{ name: updates.batch }])
+          .select('id')
+          .single();
+        
+        if (createBatchError) {
+          console.error('Error creating batch:', createBatchError);
+          throw createBatchError;
+        }
+        batchId = newBatch.id;
+      } else if (!batchError) {
+        batchId = batchData.id;
+      }
+    }
+
+    // Prepare update data - ONLY include defined values
+    const updateData = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.email !== undefined) updateData.email = updates.email;
+    if (updates.college !== undefined) updateData.college = updates.college;
+    if (updates.phone !== undefined) updateData.phone = updates.phone;
+    if (updates.academicYear !== undefined) updateData.academic_year = updates.academicYear;
+    if (updates.joinedDate !== undefined) updateData.joined_date = updates.joinedDate;
+    if (updates.additionalDetails !== undefined) updateData.additional_details = updates.additionalDetails;
+    if (streamId !== undefined) updateData.stream_id = streamId;
+    if (batchId !== undefined) updateData.batch_id = batchId;
+    if (updates.status !== undefined) updateData.status = updates.status;
+
+    console.log('Sending update data to Supabase:', updateData);
+
     const { data, error } = await supabase
       .from('interns')
-      .update({
-        name: updates.name,
-        email: updates.email,
-        college: updates.college,
-        phone: updates.phone,
-        academic_year: updates.academicYear,
-        domain: updates.domain,
-        batch: updates.batch,
-        status: updates.status,
-        additional_details: updates.additionalDetails
-      })
+      .update(updateData)
       .eq('id', internId)
-      .select()
+      .select(`
+        *,
+        streams (id, name),
+        batches (id, name)
+      `)
       .single();
 
     if (error) {
@@ -319,11 +413,25 @@ export const InternProvider = ({ children }) => {
       throw error;
     }
 
+    console.log('Successfully updated intern:', data);
+
+    // Transform data to match UI expectations
+    const transformedData = {
+      ...data,
+      domain: data.streams?.name || '',
+      batch: data.batches?.name || '',
+      stream_id: data.streams?.id || null,
+      batch_id: data.batches?.id || null,
+      joinedDate: data.joined_date ? new Date(data.joined_date).toLocaleDateString() : '',
+      additionalDetails: data.additional_details || '' // Map database field to UI field
+    };
+
     // Update local state
     setInterns(prev => prev.map(intern => 
-      intern.id === internId ? data : intern
+      intern.id === internId ? transformedData : intern
     ));
-    return data;
+    
+    return transformedData;
   };
 
   const deleteIntern = async (internId) => {
@@ -522,45 +630,85 @@ export const InternProvider = ({ children }) => {
 
   // GLOBAL WEEKS MANAGEMENT
   const addGlobalWeek = async (weekData) => {
-    const newWeek = {
-      name: weekData.name,
-      description: weekData.description || '',
-      week_number: parseInt(weekData.name.match(/\d+/)?.[0] || '0')
-    };
-
-    const { data, error } = await supabase
-      .from('global_weeks')
-      .insert([newWeek])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error adding global week:', error);
+    console.log('=== ADD GLOBAL WEEK FUNCTION CALLED ===');
+    console.log('Adding global week with data:', weekData);
+    
+    try {
+      // For now, let's use localStorage directly to bypass database issues
+      console.log('Using localStorage approach...');
+      
+      // Get existing weeks from localStorage
+      const existingWeeks = JSON.parse(localStorage.getItem('global_weeks') || '[]');
+      console.log('Existing weeks:', existingWeeks);
+      
+      // Create new week with ID
+      const newWeek = {
+        id: Date.now(), // Simple ID generation
+        name: weekData.name,
+        description: weekData.description || '',
+        week_number: parseInt(weekData.name.match(/\d+/)?.[0] || '0'),
+        created_at: new Date().toISOString()
+      };
+      
+      console.log('New week to add:', newWeek);
+      
+      // Add to existing weeks and sort
+      const updatedWeeks = [...existingWeeks, newWeek].sort((a, b) => a.week_number - b.week_number);
+      console.log('Updated weeks array:', updatedWeeks);
+      
+      // Save to localStorage
+      localStorage.setItem('global_weeks', JSON.stringify(updatedWeeks));
+      console.log('Saved to localStorage');
+      
+      // Update local state
+      setGlobalWeeks(updatedWeeks);
+      console.log('Updated local state');
+      
+      console.log('Successfully added global week:', newWeek);
+      return newWeek;
+      
+    } catch (error) {
+      console.error('=== ERROR IN ADD GLOBAL WEEK ===');
+      console.error('Error object:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
       throw error;
     }
-
-    // Update local state and sort
-    setGlobalWeeks(prev => [...prev, data].sort((a, b) => a.week_number - b.week_number));
-    return data;
   };
 
   const deleteGlobalWeek = async (weekId) => {
-    const { error } = await supabase
-      .from('global_weeks')
-      .delete()
-      .eq('id', weekId);
-
-    if (error) {
-      console.error('Error deleting global week:', error);
+    console.log('=== DELETE GLOBAL WEEK ===');
+    console.log('Deleting week ID:', weekId);
+    
+    try {
+      // Use localStorage directly
+      const existingWeeks = JSON.parse(localStorage.getItem('global_weeks') || '[]');
+      console.log('Existing weeks before delete:', existingWeeks);
+      
+      // Remove the week
+      const updatedWeeks = existingWeeks.filter(week => week.id !== weekId);
+      console.log('Updated weeks after delete:', updatedWeeks);
+      
+      // Save to localStorage
+      localStorage.setItem('global_weeks', JSON.stringify(updatedWeeks));
+      
+      // Update local state
+      setGlobalWeeks(updatedWeeks);
+      
+      console.log('Successfully deleted global week from localStorage');
+    } catch (error) {
+      console.error('Error deleting week:', error);
       throw error;
     }
-
-    // Update local state
-    setGlobalWeeks(prev => prev.filter(week => week.id !== weekId));
   };
 
   // PERFORMANCE EVALUATION FUNCTIONS
   const savePerformanceEvaluation = async (streamName, batchId = 'default', evaluationData) => {
+    console.log('=== SAVING PERFORMANCE EVALUATION ===');
+    console.log('Stream:', streamName);
+    console.log('Batch ID:', batchId);
+    console.log('Evaluation Data:', evaluationData);
+    
     const newEvaluation = {
       intern_id: evaluationData.internId,
       week: evaluationData.week,
@@ -574,6 +722,8 @@ export const InternProvider = ({ children }) => {
       comments: evaluationData.comments,
       evaluated_by: evaluationData.evaluatedBy || 'Admin'
     };
+
+    console.log('New evaluation object:', newEvaluation);
 
     // Check if evaluation already exists for this intern and week
     const { data: existing } = await supabase
@@ -625,10 +775,13 @@ export const InternProvider = ({ children }) => {
       }
       result = data;
 
+      console.log('Successfully saved new evaluation:', result);
+
       // Update local state
       setPerformanceEvaluations(prev => [data, ...prev]);
     }
 
+    console.log('=== EVALUATION SAVE COMPLETE ===');
     return result;
   };
 
@@ -840,6 +993,37 @@ export const InternProvider = ({ children }) => {
     return interns.filter(intern => intern.batch === batchName);
   };
 
+  // NEW: Get interns by batch ID (UUID) - CRITICAL FOR BATCH PAGES
+  const getInternsByBatchId = async (batchId) => {
+    if (!batchId) return [];
+    
+    const { data, error } = await supabase
+      .from('interns')
+      .select(`
+        *,
+        streams (id, name),
+        batches (id, name)
+      `)
+      .eq('batch_id', batchId)
+      .eq('status', 'active');
+    
+    if (error) {
+      console.error('Error loading interns by batch ID:', error);
+      return [];
+    }
+    
+    // Transform data to match UI expectations
+    return (data || []).map(intern => ({
+      ...intern,
+      domain: intern.streams?.name || '',
+      batch: intern.batches?.name || '',
+      stream_id: intern.streams?.id || null,
+      batch_id: intern.batches?.id || null,
+      joinedDate: intern.joined_date ? new Date(intern.joined_date).toLocaleDateString() : '',
+      additionalDetails: intern.additional_details || '' // Map database field to UI field
+    }));
+  };
+
   const getAllStreams = () => {
     const defaultStreams = Object.values(defaultStreamMapping);
     const customStreamNames = streams.map(stream => stream.name);
@@ -1012,6 +1196,7 @@ export const InternProvider = ({ children }) => {
     getInternById,
     getInternsByStream,
     getInternsByBatch,
+    getInternsByBatchId, // NEW: Critical for batch filtering
     searchInterns,
     
     // Stream functions

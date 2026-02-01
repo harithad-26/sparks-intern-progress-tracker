@@ -233,6 +233,34 @@
   margin-top: 2px;
   flex-shrink: 0;
   accent-color: #ff8a00;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border: 2px solid #d1d5db;
+  border-radius: 3px;
+  background: white;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.intern-checkbox-item input[type="checkbox"]:checked {
+  background: #ff8a00;
+  border-color: #ff8a00;
+}
+
+.intern-checkbox-item input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.intern-checkbox-item input[type="checkbox"]:hover {
+  border-color: #ff8a00;
 }
 
 .intern-checkbox-label {

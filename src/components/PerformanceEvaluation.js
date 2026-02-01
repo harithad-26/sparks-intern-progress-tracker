@@ -6,6 +6,7 @@ import './PerformanceEvaluation.css';
 const PerformanceEvaluation = ({ streamName, batchId }) => {
   const { 
     getAllInterns, 
+    getInternsByBatchId,
     getPerformanceEvaluations, 
     savePerformanceEvaluation, 
     getGlobalWeeks
@@ -24,41 +25,44 @@ const PerformanceEvaluation = ({ streamName, batchId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [availableInterns, setAvailableInterns] = useState([]);
+  const [loadingInterns, setLoadingInterns] = useState(true);
 
-  // Get all interns
+  // Get all interns and weeks
   const allInterns = getAllInterns();
   const globalWeeks = getGlobalWeeks();
 
-  // Filter interns by stream and batch
-  const getFilteredInterns = () => {
-    console.log('=== PERFORMANCE EVALUATION FILTERING ===');
-    console.log('Stream Name:', streamName);
-    console.log('Batch ID:', batchId);
-    console.log('All Interns:', allInterns);
-    
-    let filtered = allInterns.filter(intern => intern.status === 'active'); // Only active interns
-    console.log('Active Interns:', filtered);
-    
-    // Filter by stream if streamName is provided
-    if (streamName && streamName !== 'Mixed Streams') {
-      filtered = filtered.filter(intern => {
-        console.log(`Comparing intern domain "${intern.domain}" with stream "${streamName}"`);
-        return intern.domain === streamName;
-      });
-      console.log('After stream filtering:', filtered);
-    }
-    
-    // Filter by batch if batchId is provided
-    if (batchId && batchId !== 'default') {
-      filtered = filtered.filter(intern => intern.batch === `Batch ${batchId}`);
-      console.log('After batch filtering:', filtered);
-    }
-    
-    console.log('Final filtered interns:', filtered);
-    return filtered;
-  };
+  // Load interns based on batch ID
+  useEffect(() => {
+    const loadInterns = async () => {
+      setLoadingInterns(true);
+      try {
+        let filtered = [];
+        
+        if (batchId) {
+          // Use batch ID to get interns directly from database
+          filtered = await getInternsByBatchId(batchId);
+        } else {
+          // Fallback to all interns filtered by stream
+          filtered = allInterns.filter(intern => intern.status === 'active');
+          
+          // Filter by stream if provided
+          if (streamName && streamName !== 'Mixed Streams') {
+            filtered = filtered.filter(intern => intern.domain === streamName);
+          }
+        }
+        
+        setAvailableInterns(filtered);
+      } catch (error) {
+        console.error('Error loading interns:', error);
+        setAvailableInterns([]);
+      } finally {
+        setLoadingInterns(false);
+      }
+    };
 
-  const filteredInterns = getFilteredInterns();
+    loadInterns();
+  }, [batchId, streamName, getInternsByBatchId, allInterns]);
 
   // Load existing evaluation when intern and week are selected
   useEffect(() => {
@@ -233,9 +237,11 @@ const PerformanceEvaluation = ({ streamName, batchId }) => {
                   value={selectedIntern}
                   onChange={(e) => setSelectedIntern(e.target.value)}
                   className="control-select"
-                  disabled={filteredInterns.length === 0}
+                  disabled={loadingInterns || availableInterns.length === 0}
                 >
-                  {filteredInterns.length === 0 ? (
+                  {loadingInterns ? (
+                    <option value="">Loading interns...</option>
+                  ) : availableInterns.length === 0 ? (
                     <option value="">
                       {streamName && streamName !== 'Mixed Streams' 
                         ? `No active interns available for ${streamName}` 
@@ -244,7 +250,7 @@ const PerformanceEvaluation = ({ streamName, batchId }) => {
                   ) : (
                     <>
                       <option value="">Choose an intern...</option>
-                      {filteredInterns.map(intern => (
+                      {availableInterns.map(intern => (
                         <option key={intern.id} value={intern.id}>
                           {intern.name} - {intern.domain} {intern.batch && `(${intern.batch})`}
                         </option>
@@ -254,7 +260,7 @@ const PerformanceEvaluation = ({ streamName, batchId }) => {
                 </select>
                 <ChevronDown className="select-chevron" size={16} />
               </div>
-              {filteredInterns.length === 0 && (
+              {!loadingInterns && availableInterns.length === 0 && (
                 <div className="validation-notice">
                   {streamName && streamName !== 'Mixed Streams' 
                     ? `No active interns found for the ${streamName} stream.` 
@@ -367,7 +373,7 @@ const PerformanceEvaluation = ({ streamName, batchId }) => {
       <ExistingEvaluations 
         streamName={streamName} 
         batchId={batchId} 
-        allInterns={filteredInterns}
+        allInterns={availableInterns}
         globalWeeks={globalWeeks}
         getPerformanceEvaluations={getPerformanceEvaluations}
       />

@@ -5,6 +5,7 @@ import './WeeklyTasks.css';
 const WeeklyTasks = ({ batchId, streamName }) => {
   const { 
     getAllInterns, 
+    getInternsByBatchId,
     getGlobalWeeks,
     getWeeklyTasks,
     saveWeeklyTask,
@@ -21,6 +22,8 @@ const WeeklyTasks = ({ batchId, streamName }) => {
 
   const [tasks, setTasks] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableInterns, setAvailableInterns] = useState([]);
+  const [loadingInterns, setLoadingInterns] = useState(true);
   
   // Section B state
   const [sectionBData, setSectionBData] = useState([]);
@@ -30,24 +33,37 @@ const WeeklyTasks = ({ batchId, streamName }) => {
   const globalWeeks = getGlobalWeeks();
   const allInterns = getAllInterns();
   
-  // Filter interns by stream and batch (consistent with PerformanceEvaluation)
-  const getFilteredInterns = () => {
-    let filtered = allInterns.filter(intern => intern.status === 'active'); // Only active interns
-    
-    // Filter by stream if streamName is provided
-    if (streamName && streamName !== 'Mixed Streams') {
-      filtered = filtered.filter(intern => intern.domain === streamName);
-    }
-    
-    // Filter by batch if batchId is provided
-    if (batchId) {
-      filtered = filtered.filter(intern => intern.batch === `Batch ${batchId}`);
-    }
-    
-    return filtered;
-  };
+  // Load interns based on batch ID or stream
+  useEffect(() => {
+    const loadInterns = async () => {
+      setLoadingInterns(true);
+      try {
+        let filtered = [];
+        
+        if (batchId) {
+          // Use batch ID to get interns directly from database
+          filtered = await getInternsByBatchId(batchId);
+        } else {
+          // Fallback to all interns filtered by stream
+          filtered = allInterns.filter(intern => intern.status === 'active');
+          
+          // Filter by stream if streamName is provided
+          if (streamName && streamName !== 'Mixed Streams') {
+            filtered = filtered.filter(intern => intern.domain === streamName);
+          }
+        }
+        
+        setAvailableInterns(filtered);
+      } catch (error) {
+        console.error('Error loading interns for weekly tasks:', error);
+        setAvailableInterns([]);
+      } finally {
+        setLoadingInterns(false);
+      }
+    };
 
-  const availableInterns = getFilteredInterns();
+    loadInterns();
+  }, [batchId, streamName, getInternsByBatchId, allInterns]);
 
   // Load tasks from Supabase
   const loadTasks = useCallback(() => {

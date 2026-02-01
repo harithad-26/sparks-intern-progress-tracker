@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, UserPlus } from 'lucide-react';
 import { useInterns } from '../context/InternContext';
 import './CreateProjectModal.css';
 
 const CreateProjectModal = ({ batchId, onClose, onSubmit, project = null, onDelete }) => {
-  const { getInternsByBatch, addProject, updateProject, deleteProject } = useInterns();
-  const batchInterns = getInternsByBatch(`Batch ${batchId}`);
+  const { getInternsByBatchId, addProject, updateProject, deleteProject } = useInterns();
+  const [batchInterns, setBatchInterns] = useState([]);
+  const [loadingInterns, setLoadingInterns] = useState(true);
   
   const [formData, setFormData] = useState({
     name: project?.name || '',
@@ -18,6 +19,26 @@ const CreateProjectModal = ({ batchId, onClose, onSubmit, project = null, onDele
   const [errors, setErrors] = useState({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const isEditMode = !!project;
+
+  // Load interns for this batch
+  useEffect(() => {
+    const loadInterns = async () => {
+      setLoadingInterns(true);
+      try {
+        const interns = await getInternsByBatchId(batchId);
+        setBatchInterns(interns);
+      } catch (error) {
+        console.error('Error loading batch interns:', error);
+        setBatchInterns([]);
+      } finally {
+        setLoadingInterns(false);
+      }
+    };
+
+    if (batchId) {
+      loadInterns();
+    }
+  }, [batchId, getInternsByBatchId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -62,33 +83,39 @@ const CreateProjectModal = ({ batchId, onClose, onSubmit, project = null, onDele
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      const projectData = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        status: formData.status,
-        assignedInterns: formData.assignedInterns,
-        adminRemarks: formData.adminRemarks.trim()
-      };
+      try {
+        const projectData = {
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          status: formData.status,
+          assignedInterns: formData.assignedInterns,
+          adminRemarks: formData.adminRemarks.trim()
+        };
 
-      if (isEditMode) {
-        updateProject(batchId, project.id, projectData);
-      } else {
-        addProject(batchId, projectData);
+        if (isEditMode) {
+          await updateProject(project.id, projectData);
+        } else {
+          await addProject(batchId, projectData);
+        }
+
+        // Call the onSubmit callback if provided (for parent component handling)
+        if (onSubmit) {
+          onSubmit({
+            ...(project && { id: project.id }),
+            ...projectData
+          });
+        }
+
+        alert(isEditMode ? 'Project updated successfully!' : 'Project created successfully!');
+        onClose();
+      } catch (error) {
+        console.error('Error saving project:', error);
+        alert('Error saving project. Please try again.');
       }
-
-      // Call the onSubmit callback if provided (for parent component handling)
-      if (onSubmit) {
-        onSubmit({
-          ...(project && { id: project.id }),
-          ...projectData
-        });
-      }
-
-      onClose();
     }
   };
 
@@ -96,16 +123,22 @@ const CreateProjectModal = ({ batchId, onClose, onSubmit, project = null, onDele
     setShowDeleteConfirm(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (project && project.id) {
-      deleteProject(batchId, project.id);
-      
-      // Call the onDelete callback if provided
-      if (onDelete) {
-        onDelete(project);
+      try {
+        await deleteProject(project.id);
+        
+        // Call the onDelete callback if provided
+        if (onDelete) {
+          onDelete(project);
+        }
+        
+        alert('Project deleted successfully!');
+        onClose();
+      } catch (error) {
+        console.error('Error deleting project:', error);
+        alert('Error deleting project. Please try again.');
       }
-      
-      onClose();
     }
   };
 
@@ -188,7 +221,9 @@ const CreateProjectModal = ({ batchId, onClose, onSubmit, project = null, onDele
                 Assign Interns (Batch-Specific Dropdown)
               </label>
               <div className="interns-selection-container">
-                {batchInterns.length > 0 ? (
+                {loadingInterns ? (
+                  <div className="loading-message">Loading interns...</div>
+                ) : batchInterns.length > 0 ? (
                   <div className="interns-checkbox-list">
                     {batchInterns.map(intern => (
                       <label key={intern.id} className="intern-checkbox-item">
