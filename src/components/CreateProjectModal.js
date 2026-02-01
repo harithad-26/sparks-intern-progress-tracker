@@ -9,11 +9,11 @@ const CreateProjectModal = ({ batchId, onClose, onSubmit, project = null, onDele
   const [loadingInterns, setLoadingInterns] = useState(true);
   
   const [formData, setFormData] = useState({
-    name: project?.name || '',
+    name: project?.title || '',
     description: project?.description || '',
-    status: project?.status || 'Not Completed',
+    status: project?.status || 'not_started',
     assignedInterns: project?.assignedInterns || [],
-    adminRemarks: project?.adminRemarks || ''
+    adminRemarks: project?.admin_remarks || ''
   });
 
   const [errors, setErrors] = useState({});
@@ -209,9 +209,9 @@ const CreateProjectModal = ({ batchId, onClose, onSubmit, project = null, onDele
                 value={formData.status}
                 onChange={handleInputChange}
               >
-                <option value="Not Completed">Not Completed</option>
-                <option value="Partially Completed">Partially Completed</option>
-                <option value="Completed">Completed</option>
+                <option value="not_started">Not Completed</option>
+                <option value="in_progress">Partially Completed</option>
+                <option value="completed">Completed</option>
               </select>
             </div>
 

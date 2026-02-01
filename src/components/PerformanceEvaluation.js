@@ -140,7 +140,7 @@ const PerformanceEvaluation = ({ streamName, batchId }) => {
 
     try {
       const evaluationData = {
-        internId: parseInt(selectedIntern),
+        internId: selectedIntern, // Don't convert to integer, keep as UUID string
         week: selectedWeek,
         ratings,
         comments: comments.trim(),
@@ -405,10 +405,25 @@ const ExistingEvaluations = ({ streamName, batchId, allInterns, globalWeeks, get
     return intern ? intern.name : 'Unknown Intern';
   };
 
-  const calculateOverallScore = (ratings) => {
-    const ratedValues = Object.values(ratings).filter(rating => rating > 0);
-    if (ratedValues.length === 0) return 0;
-    return (ratedValues.reduce((sum, rating) => sum + rating, 0) / ratedValues.length).toFixed(1);
+  const calculateOverallScore = (evaluation) => {
+    // Handle both old format (ratings object) and new format (individual fields)
+    let ratings;
+    if (evaluation.ratings) {
+      // Old format: ratings is an object
+      ratings = Object.values(evaluation.ratings).filter(rating => rating > 0);
+    } else {
+      // New format: individual rating fields from database
+      ratings = [
+        evaluation.interest,
+        evaluation.enthusiasm, 
+        evaluation.technical_skills,
+        evaluation.deadline_adherence,
+        evaluation.team_collaboration
+      ].filter(rating => rating && rating > 0);
+    }
+    
+    if (ratings.length === 0) return 0;
+    return (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1);
   };
 
   const getScoreClass = (score) => {
@@ -442,29 +457,29 @@ const ExistingEvaluations = ({ streamName, batchId, allInterns, globalWeeks, get
             </thead>
             <tbody>
               {evaluations.map((evaluation, index) => {
-                const overallScore = calculateOverallScore(evaluation.ratings);
+                const overallScore = calculateOverallScore(evaluation);
                 return (
                   <tr key={index} className="excel-row">
                     <td className="excel-cell intern-name-cell">
-                      {getInternName(evaluation.internId)}
+                      {getInternName(evaluation.intern_id)}
                     </td>
                     <td className="excel-cell week-cell">
                       <span className="week-badge">{evaluation.week}</span>
                     </td>
                     <td className="excel-cell score-cell">
-                      {evaluation.ratings.interest}/5
+                      {evaluation.interest || 0}/5
                     </td>
                     <td className="excel-cell score-cell">
-                      {evaluation.ratings.enthusiasm}/5
+                      {evaluation.enthusiasm || 0}/5
                     </td>
                     <td className="excel-cell score-cell">
-                      {evaluation.ratings.technicalSkills}/5
+                      {evaluation.technical_skills || 0}/5
                     </td>
                     <td className="excel-cell score-cell">
-                      {evaluation.ratings.deadlineAdherence}/5
+                      {evaluation.deadline_adherence || 0}/5
                     </td>
                     <td className="excel-cell score-cell">
-                      {evaluation.ratings.teamCollaboration}/5
+                      {evaluation.team_collaboration || 0}/5
                     </td>
                     <td className="excel-cell overall-cell">
                       <span className={`overall-score ${getScoreClass(parseFloat(overallScore))}`}>
@@ -477,7 +492,7 @@ const ExistingEvaluations = ({ streamName, batchId, allInterns, globalWeeks, get
                       </div>
                     </td>
                     <td className="excel-cell date-cell">
-                      {new Date(evaluation.evaluatedAt).toLocaleDateString()}
+                      {evaluation.created_at ? new Date(evaluation.created_at).toLocaleDateString() : 'N/A'}
                     </td>
                   </tr>
                 );

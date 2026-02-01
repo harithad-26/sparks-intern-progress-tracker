@@ -501,4 +501,33 @@
   .delete-actions .btn {
     width: 100%;
   }
+}/* Read
+only input styles for project detail view */
+.readonly-input {
+  background-color: #f9fafb !important;
+  border-color: #e5e7eb !important;
+  color: #374151 !important;
+  cursor: default !important;
+}
+
+.readonly-input:focus {
+  outline: none !important;
+  border-color: #e5e7eb !important;
+  box-shadow: none !important;
+}
+
+/* Readonly intern list styles */
+.intern-checkbox-item.readonly {
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  cursor: default;
+}
+
+.intern-checkbox-item.readonly .intern-checkbox-label {
+  cursor: default;
+}
+
+/* Make sure icons in buttons are aligned */
+.btn svg {
+  margin-right: 0.5rem;
 }

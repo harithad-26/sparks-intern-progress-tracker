@@ -95,7 +95,6 @@ export const InternProvider = ({ children }) => {
     const { data, error } = await supabase
       .from('streams')
       .select('*')
-      .eq('status', 'active')
       .order('name');
     
     if (error) {
@@ -143,6 +142,8 @@ export const InternProvider = ({ children }) => {
   };
 
   const loadProjects = async () => {
+    console.log('=== LOADING PROJECTS ===');
+    
     const { data, error } = await supabase
       .from('projects')
       .select(`
@@ -158,16 +159,24 @@ export const InternProvider = ({ children }) => {
       console.error('Error loading projects:', error);
       return;
     }
-    setProjects(data || []);
+    
+    console.log('Raw projects data from Supabase:', data);
+    
+    // Transform data to include assignedInterns array
+    const transformedProjects = (data || []).map(project => ({
+      ...project,
+      assignedInterns: project.project_assignments?.map(assignment => assignment.intern_id) || []
+    }));
+    
+    console.log('Transformed projects:', transformedProjects);
+    
+    setProjects(transformedProjects);
   };
 
   const loadPerformanceEvaluations = async () => {
     const { data, error } = await supabase
       .from('performance')
-      .select(`
-        *,
-        interns (name, domain, batch)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -194,7 +203,7 @@ export const InternProvider = ({ children }) => {
     const { data, error } = await supabase
       .from('attendance')
       .select('*')
-      .order('date', { ascending: false });
+      .order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error loading attendance records:', error);
@@ -712,15 +721,12 @@ export const InternProvider = ({ children }) => {
     const newEvaluation = {
       intern_id: evaluationData.internId,
       week: evaluationData.week,
-      stream_name: streamName,
-      batch_id: batchId === 'default' ? null : batchId,
-      interest_rating: evaluationData.ratings.interest,
-      enthusiasm_rating: evaluationData.ratings.enthusiasm,
-      technical_skills_rating: evaluationData.ratings.technicalSkills,
-      deadline_adherence_rating: evaluationData.ratings.deadlineAdherence,
-      team_collaboration_rating: evaluationData.ratings.teamCollaboration,
-      comments: evaluationData.comments,
-      evaluated_by: evaluationData.evaluatedBy || 'Admin'
+      interest: evaluationData.ratings.interest,
+      enthusiasm: evaluationData.ratings.enthusiasm,
+      technical_skills: evaluationData.ratings.technicalSkills,
+      deadline_adherence: evaluationData.ratings.deadlineAdherence,
+      team_collaboration: evaluationData.ratings.teamCollaboration,
+      comments: evaluationData.comments
     };
 
     console.log('New evaluation object:', newEvaluation);
@@ -731,8 +737,6 @@ export const InternProvider = ({ children }) => {
       .select('id')
       .eq('intern_id', evaluationData.internId)
       .eq('week', evaluationData.week)
-      .eq('stream_name', streamName)
-      .eq('batch_id', batchId === 'default' ? null : batchId)
       .single();
 
     let result;
@@ -742,10 +746,7 @@ export const InternProvider = ({ children }) => {
         .from('performance')
         .update(newEvaluation)
         .eq('id', existing.id)
-        .select(`
-          *,
-          interns (name, domain, batch)
-        `)
+        .select('*')
         .single();
 
       if (error) {
@@ -763,10 +764,7 @@ export const InternProvider = ({ children }) => {
       const { data, error } = await supabase
         .from('performance')
         .insert([newEvaluation])
-        .select(`
-          *,
-          interns (name, domain, batch)
-        `)
+        .select('*')
         .single();
 
       if (error) {
@@ -776,6 +774,9 @@ export const InternProvider = ({ children }) => {
       result = data;
 
       console.log('Successfully saved new evaluation:', result);
+
+      // Reload all performance evaluations to update the UI
+      await loadPerformanceEvaluations();
 
       // Update local state
       setPerformanceEvaluations(prev => [data, ...prev]);
@@ -855,13 +856,19 @@ export const InternProvider = ({ children }) => {
 
   // PROJECT MANAGEMENT FUNCTIONS
   const addProject = async (batchId, projectData) => {
+    console.log('=== ADDING PROJECT ===');
+    console.log('Batch ID:', batchId);
+    console.log('Project Data:', projectData);
+    
     const newProject = {
-      name: projectData.name,
+      title: projectData.name,
       description: projectData.description,
-      status: projectData.status || 'Not Started',
+      status: projectData.status || 'not_started',
       batch_id: batchId,
       admin_remarks: projectData.adminRemarks || ''
     };
+
+    console.log('New project object:', newProject);
 
     const { data, error } = await supabase
       .from('projects')
@@ -874,12 +881,18 @@ export const InternProvider = ({ children }) => {
       throw error;
     }
 
+    console.log('Project created successfully:', data);
+
     // If there are assigned interns, add them to project_assignments
     if (projectData.assignedInterns && projectData.assignedInterns.length > 0) {
+      console.log('Adding intern assignments:', projectData.assignedInterns);
+      
       const assignments = projectData.assignedInterns.map(internId => ({
         project_id: data.id,
-        intern_id: internId
+        intern_id: parseInt(internId) // Ensure it's an integer if that's what the DB expects
       }));
+
+      console.log('Assignment objects:', assignments);
 
       const { error: assignmentError } = await supabase
         .from('project_assignments')
@@ -887,23 +900,33 @@ export const InternProvider = ({ children }) => {
 
       if (assignmentError) {
         console.error('Error assigning interns to project:', assignmentError);
+        // Don't throw here, let the project creation succeed even if assignments fail
+      } else {
+        console.log('Intern assignments created successfully');
       }
+    } else {
+      console.log('No interns to assign');
     }
 
-    // Reload projects to get updated data with assignments
+    // Update local state immediately
+    setProjects(prev => [data, ...prev]);
+    
+    // Also reload projects to get updated data with assignments
     await loadProjects();
     return data;
   };
 
   const updateProject = async (projectId, updates) => {
+    // Build update object with only provided fields
+    const updateData = {};
+    if (updates.name !== undefined) updateData.title = updates.name;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.status !== undefined) updateData.status = updates.status;
+    if (updates.adminRemarks !== undefined) updateData.admin_remarks = updates.adminRemarks;
+
     const { data, error } = await supabase
       .from('projects')
-      .update({
-        name: updates.name,
-        description: updates.description,
-        status: updates.status,
-        admin_remarks: updates.adminRemarks
-      })
+      .update(updateData)
       .eq('id', projectId)
       .select()
       .single();
@@ -913,10 +936,33 @@ export const InternProvider = ({ children }) => {
       throw error;
     }
 
-    // Update local state
-    setProjects(prev => prev.map(project =>
-      project.id === projectId ? { ...project, ...data } : project
-    ));
+    // Handle intern assignments if provided
+    if (updates.assignedInterns !== undefined) {
+      // First, delete existing assignments
+      await supabase
+        .from('project_assignments')
+        .delete()
+        .eq('project_id', projectId);
+
+      // Then add new assignments
+      if (updates.assignedInterns.length > 0) {
+        const assignments = updates.assignedInterns.map(internId => ({
+          project_id: projectId,
+          intern_id: parseInt(internId)
+        }));
+
+        const { error: assignmentError } = await supabase
+          .from('project_assignments')
+          .insert(assignments);
+
+        if (assignmentError) {
+          console.error('Error updating project assignments:', assignmentError);
+        }
+      }
+    }
+
+    // Reload projects to get updated data with assignments
+    await loadProjects();
     return data;
   };
 
@@ -952,8 +998,7 @@ export const InternProvider = ({ children }) => {
           intern_id: parseInt(internId),
           week: week,
           month: month,
-          status: status,
-          date: new Date().toISOString().split('T')[0] // Current date
+          status: status
         };
       });
 
@@ -1055,19 +1100,17 @@ export const InternProvider = ({ children }) => {
   const getGlobalWeeks = () => globalWeeks;
 
   const getProjectsByBatch = (batchId) => {
-    return projects.filter(project => project.batch_id === parseInt(batchId));
+    return projects.filter(project => project.batch_id === batchId);
   };
 
   const getProjectById = (batchId, projectId) => {
-    return projects.find(project => project.id === parseInt(projectId) && project.batch_id === parseInt(batchId));
+    return projects.find(project => project.id === projectId && project.batch_id === batchId);
   };
 
   const getPerformanceEvaluations = (streamName, batchId = 'default') => {
-    return performanceEvaluations.filter(evaluation => {
-      const matchesStream = evaluation.stream_name === streamName;
-      const matchesBatch = batchId === 'default' ? evaluation.batch_id === null : evaluation.batch_id === batchId;
-      return matchesStream && matchesBatch;
-    });
+    // For now, return all evaluations since we're not storing stream_name and batch_id
+    // You can add filtering later if needed
+    return performanceEvaluations;
   };
 
   const getInternPerformanceHistory = (internId, streamName, batchId = 'default') => {
